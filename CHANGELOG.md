@@ -1,3 +1,12 @@
+## 0.1.5
+
+* **Coverage reporting moved to Coveralls** — CI now uploads
+  `coverage/lcov.info` to [coveralls.io](https://coveralls.io/github/newbalancem5/yandex_login_sdk)
+  via `coverallsapp/github-action@v2`. The README badge points there.
+* Removed the self-hosted SVG coverage badge/donut and the
+  `tool/generate_coverage.dart` generator — Coveralls owns those artefacts now.
+  No more auto-commits of `assets/coverage_*.svg` to `main` on every push.
+
 ## 0.1.4
 *  FIX Lowered minimum Dart SDK constraint from `^3.11.5` to `>=3.5.0 <4.0.0` —
   the plugin doesn't rely on any Dart 3.11-specific features, so apps on

@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [main]
 
-permissions:
-  contents: write  # required by the badge auto-commit step
-
 jobs:
   test:
     name: Test (Dart) + Coverage
@@ -35,17 +32,11 @@ jobs:
       - name: Run tests with coverage
         run: flutter test --coverage
 
-      - name: Regenerate coverage badge + donut
-        run: dart run tool/generate_coverage.dart
-
-      - name: Commit updated coverage SVGs
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: stefanzweifel/git-auto-commit-action@v5
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@v2
         with:
-          commit_message: "chore: refresh coverage assets [skip ci]"
-          file_pattern: "assets/coverage_*.svg"
-          commit_user_name: "github-actions[bot]"
-          commit_user_email: "41898282+github-actions[bot]@users.noreply.github.com"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-lcov: coverage/lcov.info
 
   build-android:
     name: Build example (Android)
