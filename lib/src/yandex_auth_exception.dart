@@ -16,15 +16,15 @@ class YandexAuthException implements Exception {
 /// Catch this separately to avoid showing an error UI on intentional cancel.
 class YandexAuthCancelledException extends YandexAuthException {
   const YandexAuthCancelledException()
-    : super('User cancelled Yandex authorization', code: 'CANCELLED');
+      : super('User cancelled Yandex authorization', code: 'CANCELLED');
 }
 
 /// Thrown when the plugin is invoked on a platform without native support
 /// (e.g. desktop/web). Use this signal to fall back to your own WebView flow.
 class YandexAuthUnsupportedException extends YandexAuthException {
   const YandexAuthUnsupportedException()
-    : super(
-        'Yandex Login SDK is not available on this platform',
-        code: 'UNSUPPORTED',
-      );
+      : super(
+          'Yandex Login SDK is not available on this platform',
+          code: 'UNSUPPORTED',
+        );
 }

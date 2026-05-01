@@ -136,9 +136,8 @@ void main() {
       throwsA(isA<YandexAuthException>()),
     );
 
-    final errEvents = events
-        .where((e) => e.level == YandexLogLevel.error)
-        .toList();
+    final errEvents =
+        events.where((e) => e.level == YandexLogLevel.error).toList();
     expect(errEvents, hasLength(1));
     expect(errEvents.single.message, contains('X boom'));
     expect(errEvents.single.error, isA<YandexAuthException>());

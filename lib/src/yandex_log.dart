@@ -2,13 +2,12 @@
 enum YandexLogLevel { debug, info, warning, error }
 
 /// Signature for a log event listener installed via [YandexLog.handler].
-typedef YandexLogHandler =
-    void Function(
-      YandexLogLevel level,
-      String message, {
-      Object? error,
-      StackTrace? stackTrace,
-    });
+typedef YandexLogHandler = void Function(
+  YandexLogLevel level,
+  String message, {
+  Object? error,
+  StackTrace? stackTrace,
+});
 
 /// Internal log dispatcher.
 ///
