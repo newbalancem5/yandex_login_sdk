@@ -13,7 +13,7 @@ and falls back to ASWebAuthenticationSession (iOS 13+) or SFSafariViewController
                        DESC
   s.homepage         = 'https://github.com/newbalancem5/yandex_login_sdk'
   s.license          = { :type => 'BSD-3-Clause', :file => '../LICENSE' }
-  s.author           = { 'newbalancem5' => 'newbalancem5@gmail.com' }
+  s.author           = { 'newbalancem5' => '22999662+newbalancem5@users.noreply.github.com' }
   s.source           = { :git => 'https://github.com/newbalancem5/yandex_login_sdk.git', :tag => s.version.to_s }
   s.source_files = 'Classes/**/*'
   s.dependency 'Flutter'
