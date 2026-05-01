@@ -141,6 +141,42 @@ Future<void> signIn() async {
 }
 ```
 
+## Logging
+
+The plugin emits diagnostic events through an opt-in callback — disabled by
+default, no `print` calls in release builds. Wire it up to your logger of
+choice:
+
+```dart
+import 'package:yandex_login_sdk/yandex_login_sdk.dart';
+
+YandexLoginSdk.onLog = (level, message, {error, stackTrace}) {
+  switch (level) {
+    case YandexLogLevel.error:
+      // forward to Sentry, Crashlytics, etc.
+      mySentry.captureException(error, stackTrace: stackTrace, hint: message);
+    case YandexLogLevel.warning:
+    case YandexLogLevel.info:
+    case YandexLogLevel.debug:
+      myLogger.log(level.name, message);
+  }
+};
+```
+
+What you'll see during a normal flow:
+
+| Level | Message |
+|---|---|
+| `info` | `signIn() invoked` |
+| `debug` | `Invoking native signIn (clientId length=N)` |
+| `debug` | `Native signIn returned token (length=N)` |
+| `info` | `signIn() succeeded` |
+
+On cancel: `info: signIn() cancelled by user`. On unsupported platform:
+`warning: signIn() unsupported on this platform`. On any other error:
+`error: signIn() failed: <code> <message>` with `error` and `stackTrace`
+populated.
+
 ## API
 
 ### `YandexLoginSdk.signIn({required String clientId}) → Future<YandexLoginResult>`
@@ -156,6 +192,12 @@ value is used to activate the SDK at runtime on first call.
 | `token`      | `String`  | OAuth 2.0 access token                 |
 | `jwt`        | `String?` | Yandex JWT — iOS only                  |
 | `expiresIn`  | `int?`    | Token lifetime in seconds — Android only |
+
+### `YandexLoginSdk.onLog`
+
+| Type | Notes |
+|---|---|
+| `YandexLogHandler?` | Optional callback `(level, message, {error, stackTrace})`. `null` = silent. See [Logging](#logging) above. |
 
 ### Exceptions
 
