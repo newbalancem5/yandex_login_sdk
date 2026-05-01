@@ -7,4 +7,5 @@ library;
 
 export 'src/yandex_login_result.dart';
 export 'src/yandex_auth_exception.dart';
+export 'src/yandex_log.dart' show YandexLogLevel, YandexLogHandler;
 export 'src/yandex_login_sdk_api.dart';
