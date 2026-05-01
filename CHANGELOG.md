@@ -1,3 +1,11 @@
+## 0.1.3
+
+* Lowered minimum Dart SDK constraint from `^3.11.5` to `>=3.5.0 <4.0.0` —
+  the plugin doesn't rely on any Dart 3.11-specific features, so apps on
+  older Flutter/Dart toolchains can now consume it.
+* Relaxed `flutter_lints` dev dependency from `^6.0.0` to `^4.0.0` to match
+  the lowered SDK floor.
+
 ## 0.1.2
 
 * **Logging hook** — new `YandexLoginSdk.onLog` callback emits `info` /
