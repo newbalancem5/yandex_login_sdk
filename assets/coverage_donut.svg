@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" role="img" aria-label="coverage donut: 100% (38 of 38 lines)">
+  <title>coverage: 100% (38/38 lines)</title>
+  <g transform="rotate(-90 110.0 110.0)">
+    <circle cx="110.0" cy="110.0" r="75.0" fill="none" stroke="#e05d44" stroke-width="30.0"/>
+    <circle cx="110.0" cy="110.0" r="75.0" fill="none" stroke="#4c1" stroke-width="30.0"
+            stroke-dasharray="471.24 0.00"/>
+  </g>
+  <text x="110.0" y="110.0" text-anchor="middle" dominant-baseline="central"
+        font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="36" font-weight="700" fill="#333">100%</text>
+  <text x="110.0" y="142.0" text-anchor="middle" dominant-baseline="central"
+        font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="13" fill="#666">38 / 38 lines</text>
+</svg>
