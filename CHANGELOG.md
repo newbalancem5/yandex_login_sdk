@@ -1,3 +1,8 @@
+## 0.1.4
+*  FIX Lowered minimum Dart SDK constraint from `^3.11.5` to `>=3.5.0 <4.0.0` —
+  the plugin doesn't rely on any Dart 3.11-specific features, so apps on
+  older Flutter/Dart toolchains can now consume it.
+
 ## 0.1.3
 
 * Lowered minimum Dart SDK constraint from `^3.11.5` to `>=3.5.0 <4.0.0` —
