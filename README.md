@@ -14,6 +14,7 @@ WebView, or `ASWebAuthenticationSession`.
 - ✅ Automatic browser fallback when no Yandex app is present
 - ✅ Cancellation surfaced as a typed exception
 - ✅ Returns the OAuth `access_token` (and JWT on iOS, `expires_in` on Android)
+- ✅ **100% Dart test coverage**, every commit verified by CI
 
 > **Status:** v0.1.0. Android tested in production; iOS code complete but not
 > yet field-tested by the maintainer (no Apple Developer account at the time
@@ -164,6 +165,42 @@ value is used to activate the SDK at runtime on first call.
 | `YandexAuthUnsupportedException`   | Plugin not available on this platform             |
 | `YandexAuthException`              | Any other SDK / configuration / network error     |
 
+## Testing
+
+The Dart layer is covered by **26 unit tests** with **100 %** line coverage —
+every error branch in the method-channel implementation, every exception type,
+every code path in `YandexLoginResult` is exercised. See the
+[![codecov](https://codecov.io/gh/newbalancem5/yandex_login_sdk/branch/main/graph/badge.svg)](https://codecov.io/gh/newbalancem5/yandex_login_sdk)
+badge above for the live percentage.
+
+### Running tests locally
+
+```bash
+flutter test                    # 26 tests, ~1 s
+flutter test --coverage         # writes coverage/lcov.info
+genhtml coverage/lcov.info -o coverage/html && open coverage/html/index.html
+```
+
+### CI
+
+Every push and every pull request runs:
+
+1. `dart format --set-exit-if-changed .` — code style gate
+2. `flutter analyze` — static analysis must pass
+3. `flutter test --coverage` — all tests must pass
+4. Upload `coverage/lcov.info` to Codecov
+5. Build the example app for Android and iOS to catch native regressions
+
+The Codecov check is configured to **require 100 % coverage** on new patches
+(see [`codecov.yml`](codecov.yml)) — adding code without tests will fail CI.
+
+### What's not covered
+
+The native Kotlin and Swift layers are intentionally not measured — they do
+little more than forward calls to the official Yandex SDKs and require a real
+device + Yandex account to test meaningfully. Treat the example app as the
+manual smoke test for the native side.
+
 ## Limitations / known issues
 
 - **JWT only on iOS, `expiresIn` only on Android** — these come from
@@ -173,6 +210,13 @@ value is used to activate the SDK at runtime on first call.
   v0.2.
 - **No `signOut()`** — call your backend's logout endpoint and discard the
   token in app state.
+
+## Coverage
+
+[![](https://codecov.io/gh/newbalancem5/yandex_login_sdk/branch/main/graphs/sunburst.svg)](https://codecov.io/gh/newbalancem5/yandex_login_sdk/branch/main)
+
+The sunburst chart shows test coverage per file (centre = repo, outer ring =
+individual files). Green = covered, red = uncovered.
 
 ## License
 
