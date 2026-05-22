@@ -230,7 +230,6 @@ Every push and every pull request runs:
 1. `dart format --set-exit-if-changed .` — code style gate
 2. `flutter analyze` — static analysis must pass
 3. `flutter test --coverage` — all tests must pass
-4. Upload `coverage/lcov.info` to Coveralls
 5. Build the example app for Android and iOS to catch native regressions
 
 ### What's not covered
