@@ -1,3 +1,14 @@
+## 0.1.6
+
+* **Built-in Kotlin migration** — the Android plugin no longer applies the
+  Kotlin Gradle Plugin (KGP) itself. Flutter 3.44+ wires KGP in via its
+  Built-in Kotlin support; on older Flutter / AGP < 9 setups the plugin
+  conditionally applies `org.jetbrains.kotlin.android` for you. This silences
+  the "applies the Kotlin Gradle Plugin, which will cause build failures in
+  future versions of Flutter" warning emitted by Flutter 3.44.
+* `kotlinOptions` replaced by the top-level `kotlin.compilerOptions` block,
+  still pinned to JVM target 17.
+
 ## 0.1.5
 
 * **Coverage reporting moved to Coveralls** — CI now uploads
