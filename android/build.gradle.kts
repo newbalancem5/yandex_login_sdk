@@ -1,5 +1,5 @@
 group = "io.github.newbalancem5.yandex_login_sdk"
-version = "0.1.0"
+version = "0.2.0"
 
 allprojects {
     repositories {

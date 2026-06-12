@@ -7,14 +7,18 @@ class YandexLoginResult {
 
   /// Yandex-issued JWT.
   ///
-  /// Provided by the iOS SDK along with the access token. On Android the JWT
-  /// is fetched separately and is not currently exposed; this field will be
-  /// `null` on Android.
+  /// Populated natively on **iOS** (from `LoginResult.jwt`); `null` on
+  /// **Android** (the native `authsdk` does not return it here). For a JWT that
+  /// is identical on both platforms, call `YandexLoginSdk.getJwt` instead.
   final String? jwt;
 
-  /// Token lifetime in seconds.
+  /// Access-token lifetime in **seconds**, relative to the moment of issuance
+  /// (the OAuth 2.0 `expires_in`) — *not* an absolute timestamp. Compute an
+  /// absolute expiry as `DateTime.now().add(Duration(seconds: expiresIn))` at
+  /// sign-in time.
   ///
-  /// Provided by the Android SDK; `null` on iOS.
+  /// Provided on **Android**; always `null` on **iOS** — the iOS SDK discards
+  /// the OAuth `expires_in` and exposes no token expiry.
   final int? expiresIn;
 
   @override

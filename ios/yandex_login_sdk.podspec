@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'yandex_login_sdk'
-  s.version          = '0.1.2'
+  s.version          = '0.2.0'
   s.summary          = 'Native Yandex LoginSDK wrapper for Flutter — SSO via installed Yandex apps with browser fallback'
   s.description      = <<-DESC
 A thin Flutter wrapper around the official Yandex LoginSDK for iOS and Android.

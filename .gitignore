@@ -31,3 +31,7 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 /build/
 /coverage/
+
+# Generated SwiftPM lockfile for the plugin's own iOS package — a library
+# should not pin its consumers' transitive dependencies.
+ios/yandex_login_sdk/Package.resolved

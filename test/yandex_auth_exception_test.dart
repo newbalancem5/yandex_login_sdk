@@ -36,4 +36,12 @@ void main() {
     expect(e.message, contains('not available'));
     expect(e, isA<YandexAuthException>());
   });
+
+  test('YandexAuthInvalidTokenException has UNAUTHORIZED code', () {
+    const e = YandexAuthInvalidTokenException();
+    expect(e.code, 'UNAUTHORIZED');
+    expect(e.message, contains('401'));
+    expect(e, isA<YandexAuthException>());
+    expect(e.toString(), contains('UNAUTHORIZED'));
+  });
 }

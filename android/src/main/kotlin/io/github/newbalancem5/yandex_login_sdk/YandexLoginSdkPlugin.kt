@@ -66,8 +66,22 @@ class YandexLoginSdkPlugin :
     override fun onMethodCall(call: MethodCall, result: Result) {
         when (call.method) {
             "signIn" -> handleSignIn(result)
+            "signOut" -> handleSignOut(result)
             else -> result.notImplemented()
         }
+    }
+
+    /**
+     * Clears local sign-in state.
+     *
+     * The Yandex `authsdk` (3.x) is stateless and exposes no logout/revoke, so
+     * there is no native SDK session to clear. This resolves successfully as a
+     * documented no-op; the app should drop its own copy of the token. It does
+     * not revoke the token on Yandex's servers nor clear the Yandex-app /
+     * Chrome-tab cookie session.
+     */
+    private fun handleSignOut(result: Result) {
+        result.success(null)
     }
 
     private fun handleSignIn(result: Result) {

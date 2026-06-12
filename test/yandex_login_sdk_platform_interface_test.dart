@@ -12,6 +12,9 @@ class _MockedPlatform
   @override
   Future<YandexLoginResult> signIn({required String clientId}) async =>
       const YandexLoginResult(token: 'tok');
+
+  @override
+  Future<void> signOut() async {}
 }
 
 void main() {
@@ -23,6 +26,14 @@ void main() {
     final base = _IncompletePlatform();
     expect(
       () => base.signIn(clientId: 'x'),
+      throwsA(isA<UnimplementedError>()),
+    );
+  });
+
+  test('default signOut implementation throws UnimplementedError', () {
+    final base = _IncompletePlatform();
+    expect(
+      () => base.signOut(),
       throwsA(isA<UnimplementedError>()),
     );
   });

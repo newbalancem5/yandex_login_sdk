@@ -28,3 +28,17 @@ class YandexAuthUnsupportedException extends YandexAuthException {
           code: 'UNSUPPORTED',
         );
 }
+
+/// Thrown when Yandex rejects the access token (HTTP 401) while fetching user
+/// info or a JWT — the token is expired, revoked, or invalidated by a password
+/// change or a 2FA toggle.
+///
+/// Subclass of [YandexAuthException], so existing `catch` / `on
+/// YandexAuthException` sites keep working unchanged.
+class YandexAuthInvalidTokenException extends YandexAuthException {
+  const YandexAuthInvalidTokenException()
+      : super(
+          'Yandex rejected the access token (HTTP 401)',
+          code: 'UNAUTHORIZED',
+        );
+}

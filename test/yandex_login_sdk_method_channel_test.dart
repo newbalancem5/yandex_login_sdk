@@ -146,4 +146,59 @@ void main() {
       );
     },
   );
+
+  group('signOut', () {
+    test('invokes the native signOut method', () async {
+      var invoked = '';
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        invoked = call.method;
+        return null;
+      });
+
+      await platform.signOut();
+
+      expect(invoked, 'signOut');
+    });
+
+    test('maps MissingPluginException to YandexAuthUnsupportedException',
+        () async {
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        throw MissingPluginException('No implementation');
+      });
+
+      expect(
+        () => platform.signOut(),
+        throwsA(isA<YandexAuthUnsupportedException>()),
+      );
+    });
+
+    test('maps a PlatformException to YandexAuthException', () async {
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        throw PlatformException(code: 'SDK_ERROR', message: 'boom');
+      });
+
+      expect(
+        () => platform.signOut(),
+        throwsA(
+          isA<YandexAuthException>()
+              .having((e) => e.code, 'code', 'SDK_ERROR')
+              .having((e) => e.message, 'message', 'boom'),
+        ),
+      );
+    });
+
+    test('falls back to a default message on a null-message error', () async {
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        throw PlatformException(code: 'X');
+      });
+
+      expect(
+        () => platform.signOut(),
+        throwsA(
+          isA<YandexAuthException>()
+              .having((e) => e.message, 'message', 'Yandex SDK error'),
+        ),
+      );
+    });
+  });
 }

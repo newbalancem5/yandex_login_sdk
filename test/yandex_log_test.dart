@@ -10,6 +10,9 @@ class _SuccessPlatform
   @override
   Future<YandexLoginResult> signIn({required String clientId}) async =>
       const YandexLoginResult(token: 'tok');
+
+  @override
+  Future<void> signOut() async {}
 }
 
 class _ErrorPlatform
@@ -20,6 +23,9 @@ class _ErrorPlatform
   @override
   Future<YandexLoginResult> signIn({required String clientId}) =>
       Future.error(error);
+
+  @override
+  Future<void> signOut() => Future.error(error);
 }
 
 class _Captured {
@@ -142,5 +148,44 @@ void main() {
     expect(errEvents.single.message, contains('X boom'));
     expect(errEvents.single.error, isA<YandexAuthException>());
     expect(errEvents.single.stackTrace, isNotNull);
+  });
+
+  test('signOut() emits info on success', () async {
+    YandexLoginSdkPlatform.instance = _SuccessPlatform();
+    await YandexLoginSdk.signOut();
+
+    final messages = events.map((e) => e.message).toList();
+    expect(messages, contains('signOut() invoked'));
+    expect(messages, contains('signOut() completed'));
+  });
+
+  test('signOut() emits warning on unsupported platform', () async {
+    YandexLoginSdkPlatform.instance = _ErrorPlatform(
+      const YandexAuthUnsupportedException(),
+    );
+    await expectLater(
+      YandexLoginSdk.signOut(),
+      throwsA(isA<YandexAuthUnsupportedException>()),
+    );
+
+    expect(
+      events.singleWhere((e) => e.level == YandexLogLevel.warning).message,
+      contains('unsupported'),
+    );
+  });
+
+  test('signOut() emits error on generic SDK failure', () async {
+    YandexLoginSdkPlatform.instance = _ErrorPlatform(
+      const YandexAuthException('boom', code: 'X'),
+    );
+    await expectLater(
+      YandexLoginSdk.signOut(),
+      throwsA(isA<YandexAuthException>()),
+    );
+
+    final errEvents =
+        events.where((e) => e.level == YandexLogLevel.error).toList();
+    expect(errEvents, hasLength(1));
+    expect(errEvents.single.message, contains('signOut() failed: X boom'));
   });
 }
