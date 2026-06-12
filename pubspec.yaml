@@ -1,6 +1,6 @@
 name: yandex_login_sdk
 description: "Native Yandex LoginSDK wrapper for Flutter — SSO via installed Yandex apps with browser fallback (iOS + Android)."
-version: 0.1.6
+version: 0.2.0
 homepage: https://github.com/newbalancem5/yandex_login_sdk
 repository: https://github.com/newbalancem5/yandex_login_sdk
 issue_tracker: https://github.com/newbalancem5/yandex_login_sdk/issues
@@ -18,6 +18,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  http: ^1.2.0
   plugin_platform_interface: ^2.0.2
 
 dev_dependencies:

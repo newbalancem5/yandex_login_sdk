@@ -10,6 +10,9 @@ class _SuccessPlatform
   @override
   Future<YandexLoginResult> signIn({required String clientId}) async =>
       const YandexLoginResult(token: 'tok');
+
+  @override
+  Future<void> signOut() async {}
 }
 
 class _ErrorPlatform
@@ -20,6 +23,9 @@ class _ErrorPlatform
   @override
   Future<YandexLoginResult> signIn({required String clientId}) =>
       Future.error(error);
+
+  @override
+  Future<void> signOut() => Future.error(error);
 }
 
 class _Captured {

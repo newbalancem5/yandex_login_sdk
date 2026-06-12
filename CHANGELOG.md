@@ -1,3 +1,29 @@
+## 0.2.0
+
+* **User profile fetch (pure Dart)** — new `YandexLoginSdk.getUserInfo(token:)`
+  calls `login.yandex.ru/info` and returns a typed `YandexUserInfo`
+  (`id`, `login`, `displayName`, `defaultEmail`, `defaultPhone`, `birthday`,
+  avatar via `avatarUrl()`, …). Works identically on every platform — no native
+  code involved. Adds `YandexPhone`, the `YandexAvatarSize` enum, and a
+  `YandexAuthInvalidTokenException` thrown on HTTP 401.
+* **Cross-platform JWT** — new `YandexLoginSdk.getJwt(token:)` fetches the
+  signed JWT from `login.yandex.ru/info?format=jwt`, giving an identical result
+  on Android and iOS (the native iOS `YandexLoginResult.jwt` stays best-effort).
+* **`YandexLoginSdk.signOut()`** — clears local sign-in state. On iOS it calls
+  the native `YandexLoginSDK.logout()` (clears the cached token/JWT, PKCE
+  verifier and CSRF state from the Keychain). On Android the `authsdk` is
+  stateless and exposes no logout, so it is a **documented no-op**. Local-only
+  on both platforms: it does **not** revoke the token server-side or clear the
+  Yandex-app / browser cookie session.
+* **`YandexScope` constants** (`login:info`, `login:email`, …) for reference.
+  The native Yandex SDKs 3.x do **not** support per-login scope selection —
+  permissions are fixed when you register the app at oauth.yandex.ru — so this
+  release deliberately does **not** add a runtime `scopes` argument.
+* **Honest `expiresIn` docs** — `YandexLoginResult.expiresIn` is a *relative*
+  TTL in seconds (Android) and is always `null` on iOS (the iOS SDK discards
+  the OAuth `expires_in`).
+* Adds an `http` dependency. Dart test coverage remains 100% (78 tests).
+
 ## 0.1.6
 
 * **Built-in Kotlin migration** — the Android plugin no longer applies the

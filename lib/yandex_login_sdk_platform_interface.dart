@@ -20,4 +20,8 @@ abstract class YandexLoginSdkPlatform extends PlatformInterface {
   Future<YandexLoginResult> signIn({required String clientId}) {
     throw UnimplementedError('signIn() has not been implemented.');
   }
+
+  Future<void> signOut() {
+    throw UnimplementedError('signOut() has not been implemented.');
+  }
 }

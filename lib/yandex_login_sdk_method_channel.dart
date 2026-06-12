@@ -51,4 +51,23 @@ class MethodChannelYandexLoginSdk extends YandexLoginSdkPlatform {
       );
     }
   }
+
+  @override
+  Future<void> signOut() async {
+    YandexLog.debug('Invoking native signOut');
+    try {
+      await methodChannel.invokeMethod<void>('signOut');
+      YandexLog.debug('Native signOut completed');
+    } on MissingPluginException {
+      YandexLog.warn('No native plugin registered for the current platform');
+      throw const YandexAuthUnsupportedException();
+    } on PlatformException catch (e) {
+      YandexLog.warn('Native signOut returned PlatformException(${e.code})');
+      throw YandexAuthException(
+        e.message ?? 'Yandex SDK error',
+        code: e.code,
+        details: e.details,
+      );
+    }
+  }
 }

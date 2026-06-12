@@ -10,6 +10,9 @@ class _FakePlatform
   Object? error;
   String? lastClientId;
 
+  Object? signOutError;
+  bool signOutCalled = false;
+
   @override
   Future<YandexLoginResult> signIn({required String clientId}) {
     lastClientId = clientId;
@@ -17,6 +20,13 @@ class _FakePlatform
     return Future.value(
       response ?? const YandexLoginResult(token: 'fake_token'),
     );
+  }
+
+  @override
+  Future<void> signOut() {
+    signOutCalled = true;
+    if (signOutError != null) return Future.error(signOutError!);
+    return Future.value();
   }
 }
 
@@ -59,6 +69,27 @@ void main() {
     expect(
       () => YandexLoginSdk.signIn(clientId: 'cid'),
       throwsA(isA<YandexAuthUnsupportedException>()),
+    );
+  });
+
+  test('signOut forwards to the platform implementation', () async {
+    await YandexLoginSdk.signOut();
+    expect(fake.signOutCalled, isTrue);
+  });
+
+  test('signOut propagates the unsupported exception', () async {
+    fake.signOutError = const YandexAuthUnsupportedException();
+    expect(
+      () => YandexLoginSdk.signOut(),
+      throwsA(isA<YandexAuthUnsupportedException>()),
+    );
+  });
+
+  test('signOut propagates a generic SDK exception', () async {
+    fake.signOutError = const YandexAuthException('boom', code: 'X');
+    expect(
+      () => YandexLoginSdk.signOut(),
+      throwsA(isA<YandexAuthException>()),
     );
   });
 }

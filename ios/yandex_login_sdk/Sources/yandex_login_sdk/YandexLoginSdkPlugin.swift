@@ -51,8 +51,26 @@ public class YandexLoginSdkPlugin: NSObject, FlutterPlugin {
         switch call.method {
         case "signIn":
             handleSignIn(call, result: result)
+        case "signOut":
+            handleSignOut(result)
         default:
             result(FlutterMethodNotImplemented)
+        }
+    }
+
+    /// Clears the SDK's locally-cached login state.
+    ///
+    /// `YandexLoginSDK.logout()` removes the stored token/JWT, the PKCE
+    /// verifier and CSRF states from the Keychain. It is local-only: it does
+    /// not revoke the token on Yandex's servers. Clearing the cache forces the
+    /// next `authorize` to present interactive UI instead of returning the
+    /// cached result.
+    private func handleSignOut(_ result: @escaping FlutterResult) {
+        do {
+            try YandexLoginSDK.shared.logout()
+            result(nil)
+        } catch {
+            result(FlutterError(code: "SDK_ERROR", message: error.localizedDescription, details: nil))
         }
     }
 

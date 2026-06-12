@@ -14,9 +14,11 @@ WebView, or `ASWebAuthenticationSession`.
 - ✅ Automatic browser fallback when no Yandex app is present
 - ✅ Cancellation surfaced as a typed exception
 - ✅ Returns the OAuth `access_token` (and JWT on iOS, `expires_in` on Android)
+- ✅ Fetch the user profile (`getUserInfo`) and a cross-platform JWT (`getJwt`) — pure Dart
+- ✅ `signOut()` to clear local sign-in state
 - ✅ **100% Dart test coverage**, every commit verified by CI
 
-> **Status:** v0.1.0. Android tested in production; iOS code complete but not
+> **Status:** v0.2.0. Android tested in production; iOS code complete but not
 > yet field-tested by the maintainer (no Apple Developer account at the time
 > of release). Reports/PRs welcome.
 
@@ -36,7 +38,7 @@ You'll get a `client_id` (32-char hex string) — used in every step below.
 
 ```yaml
 dependencies:
-  yandex_login_sdk: ^0.1.0
+  yandex_login_sdk: ^0.2.0
 ```
 
 ### 3. Android setup
@@ -141,6 +143,68 @@ Future<void> signIn() async {
 }
 ```
 
+### Fetching the user profile
+
+`getUserInfo` is a pure-Dart call to `login.yandex.ru/info` — it behaves the
+same on every platform and needs no native support. Which fields are populated
+depends on the permissions your OAuth app was granted (see
+[Scopes](#scopes-permissions)).
+
+```dart
+final result = await YandexLoginSdk.signIn(clientId: clientId);
+final user = await YandexLoginSdk.getUserInfo(token: result.token);
+
+print(user.displayName);   // e.g. "Vasya"
+print(user.defaultEmail);  // requires login:email
+print(user.avatarUrl());   // requires login:avatar; null when no avatar
+```
+
+### Cross-platform JWT
+
+`YandexLoginResult.jwt` is only populated natively on iOS. For a JWT that is
+identical on both platforms, call `getJwt` — it fetches the signed JWT from
+`login.yandex.ru/info?format=jwt` (the same endpoint the Android SDK uses
+internally):
+
+```dart
+final jwt = await YandexLoginSdk.getJwt(token: result.token);
+```
+
+Both `getUserInfo` and `getJwt` throw `YandexAuthInvalidTokenException` on an
+expired or revoked token (HTTP 401).
+
+### Signing out
+
+```dart
+await YandexLoginSdk.signOut();
+```
+
+- **iOS** — calls the native `YandexLoginSDK.logout()`, clearing the cached
+  token/JWT, PKCE verifier and CSRF state from the Keychain. This forces the
+  next `signIn` to present interactive UI (and lets the user switch accounts).
+- **Android** — the `authsdk` is stateless and has no logout, so this is a
+  **documented no-op**.
+
+On **both** platforms it is *local only*: it does **not** revoke the token on
+Yandex's servers, nor clear the Yandex-app / browser cookie session. Drop your
+own copy of the token afterwards.
+
+### Scopes (permissions)
+
+Yandex fixes OAuth permissions when you **register your app** at
+[oauth.yandex.ru](https://oauth.yandex.ru). The native Yandex SDKs (3.x) do
+**not** support requesting scopes at runtime, so this plugin has no `scopes`
+argument. The `YandexScope` constants are provided for reference — they
+document which `YandexUserInfo` fields each permission unlocks:
+
+| Constant | Scope | Unlocks |
+|---|---|---|
+| `YandexScope.loginInfo` | `login:info` | `displayName`, `realName`, `firstName`, `lastName`, `sex` |
+| `YandexScope.loginEmail` | `login:email` | `defaultEmail`, `emails` |
+| `YandexScope.loginAvatar` | `login:avatar` | `defaultAvatarId` / `avatarUrl()` |
+| `YandexScope.loginBirthday` | `login:birthday` | `birthday` |
+| `YandexScope.loginDefaultPhone` | `login:default_phone` | `defaultPhone` |
+
 ## Logging
 
 The plugin emits diagnostic events through an opt-in callback — disabled by
@@ -190,8 +254,40 @@ value is used to activate the SDK at runtime on first call.
 | Field        | Type      | Notes                                  |
 |--------------|-----------|----------------------------------------|
 | `token`      | `String`  | OAuth 2.0 access token                 |
-| `jwt`        | `String?` | Yandex JWT — iOS only                  |
-| `expiresIn`  | `int?`    | Token lifetime in seconds — Android only |
+| `jwt`        | `String?` | Native JWT — iOS only. For both platforms use `getJwt`. |
+| `expiresIn`  | `int?`    | Relative TTL in **seconds** from issuance — Android only (`null` on iOS) |
+
+### `YandexLoginSdk.getUserInfo({required String token, http.Client? httpClient}) → Future<YandexUserInfo>`
+
+Pure-Dart `GET login.yandex.ru/info`. Throws `YandexAuthInvalidTokenException`
+on HTTP 401 and `YandexAuthException` (codes `HTTP_<status>`, `BAD_RESPONSE`,
+`CONNECTION_ERROR`, `BAD_ARGS`) otherwise.
+
+### `YandexLoginSdk.getJwt({required String token, String? jwtSecret, http.Client? httpClient}) → Future<String>`
+
+Pure-Dart `GET login.yandex.ru/info?format=jwt`. Returns the raw signed JWT.
+`jwtSecret` only changes the HMAC signing key — avoid shipping a real
+`client_secret` in the app.
+
+### `YandexLoginSdk.signOut() → Future<void>`
+
+Clears local sign-in state. Real `logout()` on iOS; documented no-op on
+Android. Local-only — no server-side revocation. See
+[Signing out](#signing-out).
+
+### `YandexUserInfo`
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` / `login` / `clientId` | `String` | always present |
+| `displayName` / `realName` / `firstName` / `lastName` / `sex` | `String?` | `login:info` |
+| `defaultEmail` | `String?` | `login:email` |
+| `emails` | `List<String>` | `login:email` |
+| `defaultAvatarId` + `avatarUrl([size])` | `String?` | `login:avatar` |
+| `birthday` | `String?` | `login:birthday`, raw `YYYY-MM-DD` |
+| `defaultPhone` | `YandexPhone?` | `login:default_phone` |
+| `psuid` / `oldSocialLogin` | `String?` | |
+| `raw` | `Map<String, dynamic>` | full decoded body (forward-compat) |
 
 ### `YandexLoginSdk.onLog`
 
@@ -205,20 +301,23 @@ value is used to activate the SDK at runtime on first call.
 |-----------------------------------|---------------------------------------------------|
 | `YandexAuthCancelledException`     | User dismissed the auth sheet                     |
 | `YandexAuthUnsupportedException`   | Plugin not available on this platform             |
+| `YandexAuthInvalidTokenException`  | `getUserInfo` / `getJwt` got HTTP 401 (expired/revoked token) |
 | `YandexAuthException`              | Any other SDK / configuration / network error     |
 
 ## Testing
 
-The Dart layer is covered by **26 unit tests** with **100 %** line coverage —
-every error branch in the method-channel implementation, every exception type,
-every code path in `YandexLoginResult` is exercised. Coverage is reported to
+The Dart layer is covered by **78 unit tests** with **100 %** line coverage —
+every error branch in the method-channel implementation, the `getUserInfo` /
+`getJwt` HTTP paths (success, 401, server error, transport failure, malformed
+body), every exception type and `YandexUserInfo.fromJson` edge case is
+exercised. Coverage is reported to
 [Coveralls](https://coveralls.io/github/newbalancem5/yandex_login_sdk) on every
 push and pull request.
 
 ### Running tests locally
 
 ```bash
-flutter test                            # 26 tests, ~1 s
+flutter test                            # 78 tests, ~1 s
 flutter test --coverage                 # writes coverage/lcov.info
 genhtml coverage/lcov.info -o coverage/html && open coverage/html/index.html
 ```
@@ -241,13 +340,17 @@ manual smoke test for the native side.
 
 ## Limitations / known issues
 
-- **JWT only on iOS, `expiresIn` only on Android** — these come from
-  different SDK paths. v0.2 will harmonise them via the Android SDK's
-  `getJwt()` method.
-- **`customValues` and `authorizationStrategy` not exposed** — coming in
-  v0.2.
-- **No `signOut()`** — call your backend's logout endpoint and discard the
-  token in app state.
+- **`expiresIn` is Android-only.** The iOS `YandexLoginSDK` discards the OAuth
+  `expires_in`, so `YandexLoginResult.expiresIn` is always `null` on iOS. (JWT
+  parity is solved — use `getJwt` for an identical JWT on both platforms.)
+- **No runtime scopes.** The native Yandex SDKs 3.x fix permissions at
+  OAuth-app registration time; there is no per-login scope selection. See
+  [Scopes](#scopes-permissions).
+- **`signOut()` is local-only.** It clears on-device state (iOS) or is a no-op
+  (Android); it never revokes the token server-side or clears the cookie
+  session.
+- **`authorizationStrategy` not exposed.** The plugin always uses the SDK's
+  default strategy.
 
 ## License
 
