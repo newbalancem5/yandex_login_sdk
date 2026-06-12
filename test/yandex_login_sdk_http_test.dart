@@ -133,6 +133,22 @@ void main() {
         ),
       );
     });
+
+    test('maps a wrongly-typed field (valid JSON object) to BAD_RESPONSE',
+        () async {
+      // 200 + valid JSON object, but `login` is a number — the cast in
+      // fromJson throws a TypeError, which must still surface as BAD_RESPONSE.
+      final client = MockClient(
+        (req) async => http.Response('{"id":"1","login":123}', 200),
+      );
+      expect(
+        () => YandexLoginSdk.getUserInfo(token: 'TKN', httpClient: client),
+        throwsA(
+          isA<YandexAuthException>()
+              .having((e) => e.code, 'code', 'BAD_RESPONSE'),
+        ),
+      );
+    });
   });
 
   group('getJwt', () {
@@ -219,6 +235,35 @@ void main() {
       await YandexLoginSdk.getUserInfo(token: 'TKN');
 
       expect(client.closed, isTrue);
+    });
+
+    test('closes its own client even when the request fails', () async {
+      final client = _RecordingClient(
+        (req) async => http.Response('no', 401),
+      );
+      YandexLoginSdk.httpClientFactory = () => client;
+      addTearDown(() => YandexLoginSdk.httpClientFactory = http.Client.new);
+
+      await expectLater(
+        YandexLoginSdk.getUserInfo(token: 'TKN'),
+        throwsA(isA<YandexAuthInvalidTokenException>()),
+      );
+
+      expect(client.closed, isTrue);
+    });
+
+    test('does not close a caller-supplied client on error', () async {
+      final client = _RecordingClient((req) async => throw Exception('down'));
+
+      await expectLater(
+        YandexLoginSdk.getUserInfo(token: 'TKN', httpClient: client),
+        throwsA(
+          isA<YandexAuthException>()
+              .having((e) => e.code, 'code', 'CONNECTION_ERROR'),
+        ),
+      );
+
+      expect(client.closed, isFalse);
     });
   });
 

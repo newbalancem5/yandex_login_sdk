@@ -146,6 +146,19 @@ abstract final class YandexLoginSdk {
       what: 'getUserInfo',
       httpClient: httpClient,
     );
+    Never badResponse(Object cause, StackTrace st) {
+      YandexLog.error(
+        'getUserInfo() got a malformed body',
+        error: cause,
+        stackTrace: st,
+      );
+      throw YandexAuthException(
+        'Malformed JSON from Yandex /info',
+        code: 'BAD_RESPONSE',
+        details: cause,
+      );
+    }
+
     try {
       final decoded = jsonDecode(body);
       if (decoded is! Map) {
@@ -154,16 +167,12 @@ abstract final class YandexLoginSdk {
       YandexLog.debug('getUserInfo() parsed profile');
       return YandexUserInfo.fromJson(Map<String, dynamic>.from(decoded));
     } on FormatException catch (e, st) {
-      YandexLog.error(
-        'getUserInfo() got a malformed body',
-        error: e,
-        stackTrace: st,
-      );
-      throw YandexAuthException(
-        'Malformed JSON from Yandex /info',
-        code: 'BAD_RESPONSE',
-        details: e,
-      );
+      // Body was not valid JSON or not a JSON object.
+      badResponse(e, st);
+    } on TypeError catch (e, st) {
+      // Valid JSON object, but a field had an unexpected type — keep the
+      // documented BAD_RESPONSE contract instead of leaking a raw TypeError.
+      badResponse(e, st);
     }
   }
 
@@ -206,7 +215,7 @@ abstract final class YandexLoginSdk {
   }
 
   /// Performs `GET login.yandex.ru/info` with the given [query] and returns the
-  /// 2xx response body, mapping HTTP/transport failures to typed exceptions.
+  /// 200 response body, mapping HTTP/transport failures to typed exceptions.
   ///
   /// Closes the client only when it created one (a caller-supplied [httpClient]
   /// is left open for reuse).

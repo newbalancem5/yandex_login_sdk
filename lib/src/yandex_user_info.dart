@@ -169,7 +169,7 @@ class YandexUserInfo {
       emails: emailsRaw is List
           ? emailsRaw.map((e) => e.toString()).toList(growable: false)
           : const [],
-      defaultAvatarId: json['default_avatar_id'] as String?,
+      defaultAvatarId: json['default_avatar_id']?.toString(),
       isAvatarEmpty: json['is_avatar_empty'] as bool? ?? false,
       birthday: json['birthday'] as String?,
       defaultPhone: phoneRaw is Map
