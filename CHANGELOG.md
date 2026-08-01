@@ -1,3 +1,26 @@
+## 1.0.0
+
+* **Web support** 🎉 — `signIn` now works on Flutter Web via OAuth 2.0
+  **Authorization Code + PKCE** in a popup against `oauth.yandex.ru`. No
+  client secret is involved and the access token never appears in a URL
+  (safer than the classic implicit flow). Setup: enable the web platform for
+  your OAuth app, register the redirect URI and drop a tiny
+  `yandex_auth_callback.html` into `web/` — see the README's Web setup
+  section.
+  - `getUserInfo` / `getJwt` work in the browser unchanged —
+    `login.yandex.ru` serves CORS headers (verified).
+  - `expiresIn` / `expiresAt` are populated on web (the token endpoint
+    returns the TTL); `YandexLoginResult.jwt` stays `null` — use `getJwt`.
+  - User closing the popup / denying consent → `YandexAuthCancelledException`;
+    blocked popup → code `POPUP_BLOCKED` (call `signIn` from a user gesture);
+    CSRF-mismatched callbacks are discarded with code `STATE_MISMATCH`.
+  - `strategy` is ignored on web (there is only the web flow);
+    `signOut()` is a documented no-op (the plugin holds no session state).
+  - `YandexAuthUnsupportedException` now only applies to desktop platforms.
+* First stable release: the Dart API of 0.3.0 is carried over unchanged and
+  is now covered by semantic-versioning guarantees.
+* 113 Dart tests, coverage stays at 100%.
+
 ## 0.3.0
 
 * **`clientId` is now real on Android** — the Android dependency is bumped to
