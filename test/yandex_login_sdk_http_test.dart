@@ -95,6 +95,37 @@ void main() {
       );
     });
 
+    test('maps an elapsed timeout to TIMEOUT', () async {
+      final client = MockClient((req) async {
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        return http.Response(_minimalProfile, 200);
+      });
+      expect(
+        () => YandexLoginSdk.getUserInfo(
+          token: 'TKN',
+          httpClient: client,
+          timeout: const Duration(milliseconds: 10),
+        ),
+        throwsA(
+          isA<YandexAuthException>().having((e) => e.code, 'code', 'TIMEOUT'),
+        ),
+      );
+    });
+
+    test('succeeds when the response arrives within the timeout', () async {
+      final client = MockClient(
+        (req) async => http.Response(_minimalProfile, 200),
+      );
+
+      final info = await YandexLoginSdk.getUserInfo(
+        token: 'TKN',
+        httpClient: client,
+        timeout: const Duration(seconds: 5),
+      );
+
+      expect(info.id, '1');
+    });
+
     test('rejects an empty token before issuing any request', () async {
       var called = false;
       final client = MockClient((req) async {
@@ -209,6 +240,23 @@ void main() {
         () => YandexLoginSdk.getJwt(token: '', httpClient: client),
         throwsA(
           isA<YandexAuthException>().having((e) => e.code, 'code', 'BAD_ARGS'),
+        ),
+      );
+    });
+
+    test('maps an elapsed timeout to TIMEOUT', () async {
+      final client = MockClient((req) async {
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        return http.Response('jwt', 200);
+      });
+      expect(
+        () => YandexLoginSdk.getJwt(
+          token: 'TKN',
+          httpClient: client,
+          timeout: const Duration(milliseconds: 10),
+        ),
+        throwsA(
+          isA<YandexAuthException>().having((e) => e.code, 'code', 'TIMEOUT'),
         ),
       );
     });

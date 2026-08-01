@@ -1,5 +1,5 @@
 group = "io.github.newbalancem5.yandex_login_sdk"
-version = "0.2.0"
+version = "0.3.0"
 
 allprojects {
     repositories {
@@ -47,6 +47,11 @@ android {
 
     defaultConfig {
         minSdk = 24
+        // Defaults so this module's own unit-test manifest merge succeeds —
+        // the authsdk manifest needs these placeholders. Consumer apps are
+        // unaffected: their app-level merge uses the app's own placeholders.
+        manifestPlaceholders["YANDEX_CLIENT_ID"] = "unit_test_client_id"
+        manifestPlaceholders["YANDEX_OAUTH_HOST"] = "oauth.yandex.ru"
     }
 
     testOptions {
@@ -68,7 +73,7 @@ android {
 
 dependencies {
     implementation("androidx.fragment:fragment:1.8.5")
-    implementation("com.yandex.android:authsdk:3.1.0")
+    implementation("com.yandex.android:authsdk:3.2.1")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("org.mockito:mockito-core:5.0.0")

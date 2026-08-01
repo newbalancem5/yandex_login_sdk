@@ -18,6 +18,28 @@ void main() {
       const r = YandexLoginResult(token: 'tok');
       expect(r.jwt, isNull);
       expect(r.expiresIn, isNull);
+      expect(r.issuedAt, isNull);
+      expect(r.expiresAt, isNull);
+    });
+
+    test('expiresAt adds expiresIn seconds to issuedAt', () {
+      final issued = DateTime(2026, 8, 1, 12);
+      final r = YandexLoginResult(
+        token: 'tok',
+        expiresIn: 3600,
+        issuedAt: issued,
+      );
+      expect(r.expiresAt, DateTime(2026, 8, 1, 13));
+    });
+
+    test('expiresAt is null when either component is missing', () {
+      final withoutTtl = YandexLoginResult(
+        token: 'tok',
+        issuedAt: DateTime(2026),
+      );
+      const withoutIssuedAt = YandexLoginResult(token: 'tok', expiresIn: 60);
+      expect(withoutTtl.expiresAt, isNull);
+      expect(withoutIssuedAt.expiresAt, isNull);
     });
 
     test('toString redacts long token and jwt', () {

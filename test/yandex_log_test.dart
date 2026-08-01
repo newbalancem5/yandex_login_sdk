@@ -8,7 +8,10 @@ class _SuccessPlatform
     with MockPlatformInterfaceMixin
     implements YandexLoginSdkPlatform {
   @override
-  Future<YandexLoginResult> signIn({required String clientId}) async =>
+  Future<YandexLoginResult> signIn({
+    required String clientId,
+    YandexLoginStrategy strategy = YandexLoginStrategy.auto,
+  }) async =>
       const YandexLoginResult(token: 'tok');
 
   @override
@@ -21,7 +24,10 @@ class _ErrorPlatform
   _ErrorPlatform(this.error);
   final Object error;
   @override
-  Future<YandexLoginResult> signIn({required String clientId}) =>
+  Future<YandexLoginResult> signIn({
+    required String clientId,
+    YandexLoginStrategy strategy = YandexLoginStrategy.auto,
+  }) =>
       Future.error(error);
 
   @override

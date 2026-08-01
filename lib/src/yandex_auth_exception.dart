@@ -29,6 +29,19 @@ class YandexAuthUnsupportedException extends YandexAuthException {
         );
 }
 
+/// Thrown when `signIn` is called while another sign-in flow is already in
+/// progress on the native side.
+///
+/// Wait for the first call to complete (or fail) before starting another one —
+/// e.g. disable the login button while a sign-in is pending.
+///
+/// Subclass of [YandexAuthException], so existing `catch` / `on
+/// YandexAuthException` sites keep working unchanged.
+class YandexAuthInProgressException extends YandexAuthException {
+  const YandexAuthInProgressException()
+      : super('Another Yandex sign-in is already in progress', code: 'BUSY');
+}
+
 /// Thrown when Yandex rejects the access token (HTTP 401) while fetching user
 /// info or a JWT — the token is expired, revoked, or invalidated by a password
 /// change or a 2FA toggle.
