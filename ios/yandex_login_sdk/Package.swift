@@ -23,7 +23,9 @@ let package = Package(
             dependencies: [
                 .product(name: "YandexLoginSDK", package: "yandex-login-sdk-ios"),
             ],
-            resources: []
+            resources: [
+                .process("PrivacyInfo.xcprivacy"),
+            ]
         ),
     ]
 )

@@ -21,6 +21,7 @@ class _ExampleAppState extends State<ExampleApp> {
   String _status = 'Tap "Sign in with Yandex" to start.';
   YandexUserInfo? _user;
   bool _busy = false;
+  bool _webOnly = false;
 
   Future<void> _signIn() async {
     if (_clientId.isEmpty) {
@@ -36,7 +37,12 @@ class _ExampleAppState extends State<ExampleApp> {
       _status = 'Signing in…';
     });
     try {
-      final result = await YandexLoginSdk.signIn(clientId: _clientId);
+      final result = await YandexLoginSdk.signIn(
+        clientId: _clientId,
+        strategy: _webOnly
+            ? YandexLoginStrategy.webOnly
+            : YandexLoginStrategy.auto,
+      );
       // Pure-Dart profile fetch — works the same on Android and iOS.
       final user = await YandexLoginSdk.getUserInfo(token: result.token);
       setState(() {
@@ -96,6 +102,15 @@ class _ExampleAppState extends State<ExampleApp> {
                 if (user.defaultEmail case final email?) Text(email),
                 const SizedBox(height: 24),
               ],
+              SwitchListTile(
+                title: const Text('Web-only flow'),
+                subtitle: const Text('Skip installed Yandex apps'),
+                value: _webOnly,
+                onChanged: _busy
+                    ? null
+                    : (value) => setState(() => _webOnly = value),
+              ),
+              const SizedBox(height: 12),
               FilledButton.icon(
                 onPressed: _busy ? null : _signIn,
                 icon: const Icon(Icons.login),

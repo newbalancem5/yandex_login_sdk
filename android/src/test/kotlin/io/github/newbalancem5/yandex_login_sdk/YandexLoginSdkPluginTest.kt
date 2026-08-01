@@ -6,22 +6,50 @@ import org.mockito.Mockito
 import kotlin.test.Test
 
 /*
- * This demonstrates a simple unit test of the Kotlin portion of this plugin's implementation.
+ * Unit tests for the method-call dispatch of the Kotlin plugin layer. The
+ * happy path of signIn needs a real FragmentActivity + the Yandex SDK and is
+ * covered manually via the example app; these tests pin down the branches
+ * that are reachable without an Activity.
  *
- * Once you have built the plugin's example app, you can run these tests from the command
- * line by running `./gradlew testDebugUnitTest` in the `example/android/` directory, or
- * you can run them directly from IDEs that support JUnit such as Android Studio.
+ * Run with `./gradlew yandex_login_sdk:testDebugUnitTest` from
+ * `example/android/` (also executed in CI).
  */
-
 internal class YandexLoginSdkPluginTest {
+
     @Test
-    fun onMethodCall_getPlatformVersion_returnsExpectedValue() {
+    fun signOut_resolvesSuccessfullyAsNoOp() {
         val plugin = YandexLoginSdkPlugin()
+        val mockResult = Mockito.mock(MethodChannel.Result::class.java)
 
-        val call = MethodCall("getPlatformVersion", null)
-        val mockResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
-        plugin.onMethodCall(call, mockResult)
+        plugin.onMethodCall(MethodCall("signOut", null), mockResult)
 
-        Mockito.verify(mockResult).success("Android " + android.os.Build.VERSION.RELEASE)
+        Mockito.verify(mockResult).success(null)
+        Mockito.verifyNoMoreInteractions(mockResult)
+    }
+
+    @Test
+    fun signIn_withoutActivity_errorsWithNoActivity() {
+        val plugin = YandexLoginSdkPlugin()
+        val mockResult = Mockito.mock(MethodChannel.Result::class.java)
+
+        plugin.onMethodCall(MethodCall("signIn", mapOf("clientId" to "cid")), mockResult)
+
+        Mockito.verify(mockResult).error(
+            Mockito.eq("NO_ACTIVITY"),
+            Mockito.anyString(),
+            Mockito.isNull(),
+        )
+        Mockito.verifyNoMoreInteractions(mockResult)
+    }
+
+    @Test
+    fun unknownMethod_reportsNotImplemented() {
+        val plugin = YandexLoginSdkPlugin()
+        val mockResult = Mockito.mock(MethodChannel.Result::class.java)
+
+        plugin.onMethodCall(MethodCall("getPlatformVersion", null), mockResult)
+
+        Mockito.verify(mockResult).notImplemented()
+        Mockito.verifyNoMoreInteractions(mockResult)
     }
 }

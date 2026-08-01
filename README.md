@@ -12,13 +12,14 @@ WebView, or `ASWebAuthenticationSession`.
 
 - ✅ Native SSO via installed Yandex apps
 - ✅ Automatic browser fallback when no Yandex app is present
+- ✅ Optional `webOnly` strategy to skip the installed apps entirely
 - ✅ Cancellation surfaced as a typed exception
 - ✅ Returns the OAuth `access_token` (and JWT on iOS, `expires_in` on Android)
 - ✅ Fetch the user profile (`getUserInfo`) and a cross-platform JWT (`getJwt`) — pure Dart
 - ✅ `signOut()` to clear local sign-in state
 - ✅ **100% Dart test coverage**, every commit verified by CI
 
-> **Status:** v0.2.0. Android tested in production; iOS code complete but not
+> **Status:** v0.3.0. Android tested in production; iOS code complete but not
 > yet field-tested by the maintainer (no Apple Developer account at the time
 > of release). Reports/PRs welcome.
 
@@ -38,13 +39,14 @@ You'll get a `client_id` (32-char hex string) — used in every step below.
 
 ```yaml
 dependencies:
-  yandex_login_sdk: ^0.2.0
+  yandex_login_sdk: ^0.3.0
 ```
 
 ### 3. Android setup
 
-**`android/app/build.gradle.kts`** — add manifest placeholders (the SDK reads
-the client ID from the merged manifest, not at runtime):
+**`android/app/build.gradle.kts`** — add manifest placeholders (required for
+the native SDK to initialize; the `clientId` you pass to `signIn` overrides
+the placeholder value at runtime):
 
 ```kotlin
 android {
@@ -80,7 +82,8 @@ declare the schemes it queries:
         <key>CFBundleURLName</key><string>YandexLoginSDK</string>
         <key>CFBundleURLSchemes</key>
         <array>
-            <string>yx&lt;your_client_id&gt;</string>
+            <string>yx0123456789abcdef0123456789abcdef</string>
+            <!-- "yx" + your client_id, no angle brackets -->
         </array>
     </dict>
 </array>
@@ -129,12 +132,15 @@ Future<void> signIn() async {
   try {
     final result = await YandexLoginSdk.signIn(
       clientId: 'your_yandex_oauth_client_id',
+      // strategy: YandexLoginStrategy.webOnly, // skip installed Yandex apps
     );
     print('Access token: ${result.token}');
     print('JWT (iOS only): ${result.jwt}');
-    print('Expires in (Android only): ${result.expiresIn}s');
+    print('Expires at (Android only): ${result.expiresAt}');
   } on YandexAuthCancelledException {
     // User dismissed the sheet — no need to show an error.
+  } on YandexAuthInProgressException {
+    // A sign-in is already running — ignore the extra tap.
   } on YandexAuthUnsupportedException {
     // Web/desktop or unsupported — fall back to your own WebView.
   } on YandexAuthException catch (e) {
@@ -142,6 +148,19 @@ Future<void> signIn() async {
   }
 }
 ```
+
+### Login strategy
+
+`signIn` accepts an optional `strategy`:
+
+| Value | Android | iOS |
+|---|---|---|
+| `YandexLoginStrategy.auto` (default) | `NATIVE → CHROME_TAB → WEBVIEW` | Yandex apps → web session |
+| `YandexLoginStrategy.webOnly` | `CHROME_TAB → WEBVIEW` | `ASWebAuthenticationSession` only |
+
+There is deliberately no `nativeOnly`: neither native SDK can *require* the
+app-only flow — both fall back to the browser when no Yandex app is
+installed.
 
 ### Fetching the user profile
 
@@ -171,7 +190,9 @@ final jwt = await YandexLoginSdk.getJwt(token: result.token);
 ```
 
 Both `getUserInfo` and `getJwt` throw `YandexAuthInvalidTokenException` on an
-expired or revoked token (HTTP 401).
+expired or revoked token (HTTP 401), and both accept an optional
+`timeout: Duration(...)` that bounds the whole request (code `TIMEOUT` on
+expiry).
 
 ### Signing out
 
@@ -208,8 +229,10 @@ document which `YandexUserInfo` fields each permission unlocks:
 ## Logging
 
 The plugin emits diagnostic events through an opt-in callback — disabled by
-default, no `print` calls in release builds. Wire it up to your logger of
-choice:
+default, no `print` calls in release builds. While a handler is installed the
+**native** Kotlin/Swift layers mirror their own events into the same hook
+(prefixed with `[native]`), and on Android the underlying `authsdk`'s logcat
+output is enabled too. Wire it up to your logger of choice:
 
 ```dart
 import 'package:yandex_login_sdk/yandex_login_sdk.dart';
@@ -243,11 +266,12 @@ populated.
 
 ## API
 
-### `YandexLoginSdk.signIn({required String clientId}) → Future<YandexLoginResult>`
+### `YandexLoginSdk.signIn({required String clientId, YandexLoginStrategy strategy = .auto}) → Future<YandexLoginResult>`
 
-Triggers the authorization flow. On Android, `clientId` is informational; the
-build-time `manifestPlaceholders` value is what the SDK uses. On iOS, the
-value is used to activate the SDK at runtime on first call.
+Triggers the authorization flow. `clientId` is used on both platforms: on
+Android it overrides the manifest placeholder at runtime (authsdk 3.2+), on
+iOS it (re-)activates the SDK. See [Login strategy](#login-strategy) for
+`strategy`.
 
 ### `YandexLoginResult`
 
@@ -256,14 +280,16 @@ value is used to activate the SDK at runtime on first call.
 | `token`      | `String`  | OAuth 2.0 access token                 |
 | `jwt`        | `String?` | Native JWT — iOS only. For both platforms use `getJwt`. |
 | `expiresIn`  | `int?`    | Relative TTL in **seconds** from issuance — Android only (`null` on iOS) |
+| `issuedAt`   | `DateTime?` | When the native response arrived on the Dart side |
+| `expiresAt`  | `DateTime?` (getter) | `issuedAt + expiresIn`; `null` on iOS |
 
-### `YandexLoginSdk.getUserInfo({required String token, http.Client? httpClient}) → Future<YandexUserInfo>`
+### `YandexLoginSdk.getUserInfo({required String token, http.Client? httpClient, Duration? timeout}) → Future<YandexUserInfo>`
 
 Pure-Dart `GET login.yandex.ru/info`. Throws `YandexAuthInvalidTokenException`
 on HTTP 401 and `YandexAuthException` (codes `HTTP_<status>`, `BAD_RESPONSE`,
-`CONNECTION_ERROR`, `BAD_ARGS`) otherwise.
+`TIMEOUT`, `CONNECTION_ERROR`, `BAD_ARGS`) otherwise.
 
-### `YandexLoginSdk.getJwt({required String token, String? jwtSecret, http.Client? httpClient}) → Future<String>`
+### `YandexLoginSdk.getJwt({required String token, String? jwtSecret, http.Client? httpClient, Duration? timeout}) → Future<String>`
 
 Pure-Dart `GET login.yandex.ru/info?format=jwt`. Returns the raw signed JWT.
 `jwtSecret` only changes the HMAC signing key — avoid shipping a real
@@ -300,24 +326,25 @@ Android. Local-only — no server-side revocation. See
 | Exception                          | When                                              |
 |-----------------------------------|---------------------------------------------------|
 | `YandexAuthCancelledException`     | User dismissed the auth sheet                     |
+| `YandexAuthInProgressException`    | `signIn` called while another sign-in is running  |
 | `YandexAuthUnsupportedException`   | Plugin not available on this platform             |
 | `YandexAuthInvalidTokenException`  | `getUserInfo` / `getJwt` got HTTP 401 (expired/revoked token) |
 | `YandexAuthException`              | Any other SDK / configuration / network error     |
 
 ## Testing
 
-The Dart layer is covered by **78 unit tests** with **100 %** line coverage —
+The Dart layer is covered by **95 unit tests** with **100 %** line coverage —
 every error branch in the method-channel implementation, the `getUserInfo` /
-`getJwt` HTTP paths (success, 401, server error, transport failure, malformed
-body), every exception type and `YandexUserInfo.fromJson` edge case is
-exercised. Coverage is reported to
+`getJwt` HTTP paths (success, 401, server error, timeout, transport failure,
+malformed body), every exception type and `YandexUserInfo.fromJson` edge case
+is exercised. Coverage is reported to
 [Coveralls](https://coveralls.io/github/newbalancem5/yandex_login_sdk) on every
 push and pull request.
 
 ### Running tests locally
 
 ```bash
-flutter test                            # 78 tests, ~1 s
+flutter test                            # 95 tests, ~1 s
 flutter test --coverage                 # writes coverage/lcov.info
 genhtml coverage/lcov.info -o coverage/html && open coverage/html/index.html
 ```
@@ -329,7 +356,9 @@ Every push and every pull request runs:
 1. `dart format --set-exit-if-changed .` — code style gate
 2. `flutter analyze` — static analysis must pass
 3. `flutter test --coverage` — all tests must pass
+4. `flutter pub publish --dry-run` — packaging must be valid
 5. Build the example app for Android and iOS to catch native regressions
+6. Kotlin unit tests of the Android plugin layer
 
 ### What's not covered
 
@@ -340,8 +369,8 @@ manual smoke test for the native side.
 
 ## Limitations / known issues
 
-- **`expiresIn` is Android-only.** The iOS `YandexLoginSDK` discards the OAuth
-  `expires_in`, so `YandexLoginResult.expiresIn` is always `null` on iOS. (JWT
+- **`expiresIn` / `expiresAt` are Android-only.** The iOS `YandexLoginSDK`
+  discards the OAuth `expires_in`, so both are always `null` on iOS. (JWT
   parity is solved — use `getJwt` for an identical JWT on both platforms.)
 - **No runtime scopes.** The native Yandex SDKs 3.x fix permissions at
   OAuth-app registration time; there is no per-login scope selection. See
@@ -349,8 +378,9 @@ manual smoke test for the native side.
 - **`signOut()` is local-only.** It clears on-device state (iOS) or is a no-op
   (Android); it never revokes the token server-side or clears the cookie
   session.
-- **`authorizationStrategy` not exposed.** The plugin always uses the SDK's
-  default strategy.
+- **No `nativeOnly` strategy.** Neither native SDK can require the app-only
+  flow — both fall back to the browser when no Yandex app is installed. See
+  [Login strategy](#login-strategy).
 
 ## License
 
