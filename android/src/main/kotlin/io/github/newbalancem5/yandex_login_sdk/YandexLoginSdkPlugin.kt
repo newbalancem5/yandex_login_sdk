@@ -7,6 +7,7 @@ import com.yandex.authsdk.YandexAuthLoginOptions
 import com.yandex.authsdk.YandexAuthOptions
 import com.yandex.authsdk.YandexAuthResult
 import com.yandex.authsdk.YandexAuthSdk
+import com.yandex.authsdk.internal.strategy.LoginType
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -25,6 +26,7 @@ class YandexLoginSdkPlugin :
     private var sdk: YandexAuthSdk? = null
     private var launcher: ActivityResultLauncher<YandexAuthLoginOptions>? = null
     private var pendingResult: Result? = null
+    private var loggingEnabled = false
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(binding.binaryMessenger, CHANNEL)
@@ -42,7 +44,18 @@ class YandexLoginSdkPlugin :
                     "(use FlutterFragmentActivity in MainActivity.kt)."
             )
         activity = act
-        sdk = YandexAuthSdk.create(YandexAuthOptions(act, false))
+        recreateSdk(act)
+    }
+
+    /**
+     * (Re)creates the SDK and the result launcher for [act]. REGISTRY_KEY is
+     * stable across Activity recreations, so a result produced while the
+     * Activity was being recreated (e.g. rotation during sign-in) is
+     * redelivered here by the restored registry.
+     */
+    private fun recreateSdk(act: FragmentActivity) {
+        launcher?.unregister()
+        sdk = YandexAuthSdk.create(YandexAuthOptions(act, loggingEnabled))
         launcher = act.activityResultRegistry.register(
             REGISTRY_KEY,
             sdk!!.contract,
@@ -50,10 +63,7 @@ class YandexLoginSdkPlugin :
     }
 
     override fun onDetachedFromActivity() {
-        launcher?.unregister()
-        launcher = null
-        sdk = null
-        activity = null
+        disposeActivity()
         pendingResult?.error("DETACHED", "Activity detached during sign-in", null)
         pendingResult = null
     }
@@ -61,11 +71,22 @@ class YandexLoginSdkPlugin :
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) =
         onAttachedToActivity(binding)
 
-    override fun onDetachedFromActivityForConfigChanges() = onDetachedFromActivity()
+    override fun onDetachedFromActivityForConfigChanges() {
+        // Keep pendingResult: the auth result survives the config change and
+        // is redelivered through the re-registered launcher.
+        disposeActivity()
+    }
+
+    private fun disposeActivity() {
+        launcher?.unregister()
+        launcher = null
+        sdk = null
+        activity = null
+    }
 
     override fun onMethodCall(call: MethodCall, result: Result) {
         when (call.method) {
-            "signIn" -> handleSignIn(result)
+            "signIn" -> handleSignIn(call, result)
             "signOut" -> handleSignOut(result)
             else -> result.notImplemented()
         }
@@ -81,24 +102,38 @@ class YandexLoginSdkPlugin :
      * Chrome-tab cookie session.
      */
     private fun handleSignOut(result: Result) {
+        nativeLog("debug", "signOut(): no-op on Android (stateless authsdk)")
         result.success(null)
     }
 
-    private fun handleSignIn(result: Result) {
+    private fun handleSignIn(call: MethodCall, result: Result) {
         if (pendingResult != null) {
             result.error("BUSY", "Another sign-in is in progress", null)
             return
         }
-        val launcher = this.launcher
         if (launcher == null) {
             result.error("NO_ACTIVITY", "Plugin is not attached to a FragmentActivity", null)
             return
         }
+        val nativeLogging = call.argument<Boolean>("nativeLogging") ?: false
+        if (nativeLogging != loggingEnabled) {
+            loggingEnabled = nativeLogging
+            activity?.let { recreateSdk(it) }
+        }
+        // authsdk 3.2+ lets the login options override the manifest clientId
+        // at runtime; blank/null falls back to the manifest value.
+        val clientId = call.argument<String>("clientId")
+        val loginType = when (call.argument<String>("strategy")) {
+            "webOnly" -> LoginType.CHROME_TAB
+            else -> LoginType.NATIVE
+        }
         pendingResult = result
+        nativeLog("debug", "launching sign-in (loginType=$loginType)")
         try {
-            launcher.launch(YandexAuthLoginOptions())
+            launcher!!.launch(YandexAuthLoginOptions(loginType, clientId))
         } catch (e: Throwable) {
             pendingResult = null
+            nativeLog("error", "launcher.launch failed: ${e.message}")
             result.error("SDK_ERROR", e.message ?: "launcher.launch failed", null)
         }
     }
@@ -107,19 +142,38 @@ class YandexLoginSdkPlugin :
         val pending = pendingResult ?: return
         pendingResult = null
         when (authResult) {
-            is YandexAuthResult.Success -> pending.success(
-                mapOf(
-                    "token" to authResult.token.value,
-                    "expiresIn" to authResult.token.expiresIn,
+            is YandexAuthResult.Success -> {
+                nativeLog("debug", "sign-in succeeded (expiresIn=${authResult.token.expiresIn})")
+                pending.success(
+                    mapOf(
+                        "token" to authResult.token.value,
+                        "expiresIn" to authResult.token.expiresIn,
+                    )
                 )
-            )
-            is YandexAuthResult.Failure -> pending.error(
-                "SDK_ERROR",
-                authResult.exception.message ?: "Yandex auth failed",
-                (authResult.exception as? YandexAuthException)?.errors?.joinToString(),
-            )
-            YandexAuthResult.Cancelled -> pending.error("CANCELLED", "User cancelled", null)
+            }
+            is YandexAuthResult.Failure -> {
+                nativeLog("error", "sign-in failed: ${authResult.exception.message}")
+                pending.error(
+                    "SDK_ERROR",
+                    authResult.exception.message ?: "Yandex auth failed",
+                    (authResult.exception as? YandexAuthException)?.errors?.joinToString(),
+                )
+            }
+            YandexAuthResult.Cancelled -> {
+                nativeLog("info", "sign-in cancelled by user")
+                pending.error("CANCELLED", "User cancelled", null)
+            }
         }
+    }
+
+    /**
+     * Mirrors a native diagnostic event into the Dart-side `YandexLoginSdk.onLog`
+     * hook. Gated by the `nativeLogging` flag the Dart layer sends with each
+     * signIn (true only while a log handler is installed).
+     */
+    private fun nativeLog(level: String, message: String) {
+        if (!loggingEnabled) return
+        channel.invokeMethod("log", mapOf("level" to level, "message" to message))
     }
 
     private companion object {

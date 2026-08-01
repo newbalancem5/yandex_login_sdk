@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
@@ -7,6 +8,7 @@ import '../yandex_login_sdk_platform_interface.dart';
 import 'yandex_auth_exception.dart';
 import 'yandex_log.dart';
 import 'yandex_login_result.dart';
+import 'yandex_login_strategy.dart';
 import 'yandex_user_info.dart';
 
 /// Entry point for the Yandex Login SDK plugin.
@@ -41,13 +43,18 @@ abstract final class YandexLoginSdk {
   ///
   /// On **Android** the SDK chains `NATIVE → CHROME_TAB → WEBVIEW`
   /// automatically: it tries an installed Yandex app first and falls back to a
-  /// Chrome Custom Tab / WebView when none is available. The [clientId]
-  /// argument is informational on Android — the actual value is read from
-  /// the merged `AndroidManifest.xml` (see README setup).
+  /// Chrome Custom Tab / WebView when none is available. [clientId] overrides
+  /// the manifest value at runtime (authsdk 3.2+); the
+  /// `YANDEX_CLIENT_ID` / `YANDEX_OAUTH_HOST` manifest placeholders are still
+  /// required for the SDK to initialize (see README setup).
   ///
   /// On **iOS** the SDK tries the installed Yandex apps first and falls back
-  /// to `ASWebAuthenticationSession` (iOS 13+) or `SFSafariViewController`
-  /// (iOS 12). [clientId] is used to activate the SDK at runtime.
+  /// to `ASWebAuthenticationSession`. [clientId] is used to activate the SDK
+  /// at runtime; passing a different value re-activates it.
+  ///
+  /// [strategy] selects where the fallback chain starts: [YandexLoginStrategy.auto]
+  /// (default, native apps first) or [YandexLoginStrategy.webOnly] (skip the
+  /// installed apps and go straight to the browser-based flow).
   ///
   /// OAuth permissions (scopes) are **not** requested here — Yandex fixes them
   /// at OAuth-app registration time (<https://oauth.yandex.ru>). See
@@ -56,13 +63,19 @@ abstract final class YandexLoginSdk {
   ///
   /// Throws:
   /// - [YandexAuthCancelledException] when the user cancels.
+  /// - [YandexAuthInProgressException] when another sign-in is already
+  ///   running.
   /// - [YandexAuthUnsupportedException] on unsupported platforms.
   /// - [YandexAuthException] for any other SDK failure.
-  static Future<YandexLoginResult> signIn({required String clientId}) async {
+  static Future<YandexLoginResult> signIn({
+    required String clientId,
+    YandexLoginStrategy strategy = YandexLoginStrategy.auto,
+  }) async {
     YandexLog.info('signIn() invoked');
     try {
       final result = await YandexLoginSdkPlatform.instance.signIn(
         clientId: clientId,
+        strategy: strategy,
       );
       YandexLog.info('signIn() succeeded');
       return result;
@@ -127,17 +140,21 @@ abstract final class YandexLoginSdk {
   /// Which fields come back depends on the OAuth permissions granted to your
   /// app (see `YandexScope`).
   ///
-  /// Pass [httpClient] to supply your own client (timeouts, proxy, tests); when
-  /// omitted a one-shot client is created and closed internally.
+  /// Pass [httpClient] to supply your own client (proxy, retries, tests); when
+  /// omitted a one-shot client is created and closed internally. [timeout]
+  /// bounds the whole request — when it elapses a [YandexAuthException] with
+  /// code `TIMEOUT` is thrown.
   ///
   /// Throws:
   /// - [YandexAuthInvalidTokenException] on HTTP 401 (expired/revoked token).
   /// - [YandexAuthException] (code `HTTP_<status>`) on other non-200 responses,
-  ///   (code `BAD_RESPONSE`) on a malformed body, (code `CONNECTION_ERROR`) on
-  ///   a transport failure, or (code `BAD_ARGS`) when [token] is empty.
+  ///   (code `BAD_RESPONSE`) on a malformed body, (code `TIMEOUT`) when
+  ///   [timeout] elapses, (code `CONNECTION_ERROR`) on a transport failure, or
+  ///   (code `BAD_ARGS`) when [token] is empty.
   static Future<YandexUserInfo> getUserInfo({
     required String token,
     http.Client? httpClient,
+    Duration? timeout,
   }) async {
     YandexLog.info('getUserInfo() invoked');
     final body = await _getInfo(
@@ -145,6 +162,7 @@ abstract final class YandexLoginSdk {
       query: const {'format': 'json'},
       what: 'getUserInfo',
       httpClient: httpClient,
+      timeout: timeout,
     );
     Never badResponse(Object cause, StackTrace st) {
       YandexLog.error(
@@ -190,16 +208,19 @@ abstract final class YandexLoginSdk {
   /// server-side or trusting HTTPS transport for client-only flows.
   ///
   /// Pass [httpClient] to supply your own client; when omitted a one-shot
-  /// client is created and closed internally.
+  /// client is created and closed internally. [timeout] bounds the whole
+  /// request — when it elapses a [YandexAuthException] with code `TIMEOUT` is
+  /// thrown.
   ///
   /// Throws:
   /// - [YandexAuthInvalidTokenException] on HTTP 401 (expired/revoked token).
-  /// - [YandexAuthException] (code `HTTP_<status>` / `CONNECTION_ERROR` /
-  ///   `BAD_ARGS`) otherwise.
+  /// - [YandexAuthException] (code `HTTP_<status>` / `TIMEOUT` /
+  ///   `CONNECTION_ERROR` / `BAD_ARGS`) otherwise.
   static Future<String> getJwt({
     required String token,
     String? jwtSecret,
     http.Client? httpClient,
+    Duration? timeout,
   }) async {
     YandexLog.info('getJwt() invoked');
     final query = <String, String>{'format': 'jwt'};
@@ -209,6 +230,7 @@ abstract final class YandexLoginSdk {
       query: query,
       what: 'getJwt',
       httpClient: httpClient,
+      timeout: timeout,
     );
     YandexLog.debug('getJwt() received JWT (length=${jwt.length})');
     return jwt;
@@ -224,6 +246,7 @@ abstract final class YandexLoginSdk {
     required Map<String, String> query,
     required String what,
     http.Client? httpClient,
+    Duration? timeout,
   }) async {
     if (token.isEmpty) {
       YandexLog.error('$what() called with empty token');
@@ -235,10 +258,9 @@ abstract final class YandexLoginSdk {
     final client = httpClient ?? httpClientFactory();
     final uri = Uri.https(_infoHost, _infoPath, query);
     try {
-      final response = await client.get(
-        uri,
-        headers: {'Authorization': 'OAuth $token'},
-      );
+      var request = client.get(uri, headers: {'Authorization': 'OAuth $token'});
+      if (timeout != null) request = request.timeout(timeout);
+      final response = await request;
       final status = response.statusCode;
       if (status == 200) {
         return response.body;
@@ -254,6 +276,13 @@ abstract final class YandexLoginSdk {
       );
     } on YandexAuthException {
       rethrow;
+    } on TimeoutException catch (e, st) {
+      YandexLog.error('$what() timed out', error: e, stackTrace: st);
+      throw YandexAuthException(
+        'Yandex /info request timed out after ${timeout!.inMilliseconds} ms',
+        code: 'TIMEOUT',
+        details: e,
+      );
     } catch (e, st) {
       YandexLog.error('$what() transport failure', error: e, stackTrace: st);
       throw YandexAuthException(

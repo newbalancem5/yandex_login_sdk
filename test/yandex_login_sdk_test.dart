@@ -9,13 +9,18 @@ class _FakePlatform
   YandexLoginResult? response;
   Object? error;
   String? lastClientId;
+  YandexLoginStrategy? lastStrategy;
 
   Object? signOutError;
   bool signOutCalled = false;
 
   @override
-  Future<YandexLoginResult> signIn({required String clientId}) {
+  Future<YandexLoginResult> signIn({
+    required String clientId,
+    YandexLoginStrategy strategy = YandexLoginStrategy.auto,
+  }) {
     lastClientId = clientId;
+    lastStrategy = strategy;
     if (error != null) return Future.error(error!);
     return Future.value(
       response ?? const YandexLoginResult(token: 'fake_token'),
@@ -42,6 +47,15 @@ void main() {
     fake.response = const YandexLoginResult(token: 'tok');
     await YandexLoginSdk.signIn(clientId: 'my_client_id');
     expect(fake.lastClientId, 'my_client_id');
+    expect(fake.lastStrategy, YandexLoginStrategy.auto);
+  });
+
+  test('signIn forwards the webOnly strategy', () async {
+    await YandexLoginSdk.signIn(
+      clientId: 'cid',
+      strategy: YandexLoginStrategy.webOnly,
+    );
+    expect(fake.lastStrategy, YandexLoginStrategy.webOnly);
   });
 
   test('signIn returns the value from the platform', () async {

@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: Test (Dart) + Coverage
@@ -28,6 +32,9 @@ jobs:
 
       - name: Analyze
         run: flutter analyze
+
+      - name: Validate packaging
+        run: flutter pub publish --dry-run
 
       - name: Run tests with coverage
         run: flutter test --coverage
@@ -57,6 +64,10 @@ jobs:
       - name: Build example APK
         working-directory: example
         run: flutter build apk --debug
+
+      - name: Run Android plugin unit tests
+        working-directory: example/android
+        run: ./gradlew yandex_login_sdk:testDebugUnitTest
 
   build-ios:
     name: Build example (iOS)

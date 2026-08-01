@@ -10,7 +10,10 @@ class _MockedPlatform
     with MockPlatformInterfaceMixin
     implements YandexLoginSdkPlatform {
   @override
-  Future<YandexLoginResult> signIn({required String clientId}) async =>
+  Future<YandexLoginResult> signIn({
+    required String clientId,
+    YandexLoginStrategy strategy = YandexLoginStrategy.auto,
+  }) async =>
       const YandexLoginResult(token: 'tok');
 
   @override

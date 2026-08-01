@@ -1,3 +1,55 @@
+## 0.3.0
+
+* **`clientId` is now real on Android** — the Android dependency is bumped to
+  `com.yandex.android:authsdk:3.2.1`, whose login options accept a runtime
+  `clientId` that overrides the manifest value. The `clientId` you pass to
+  `signIn` is now used on **both** platforms (the
+  `YANDEX_CLIENT_ID` / `YANDEX_OAUTH_HOST` manifest placeholders are still
+  required for SDK initialization). This also enables switching between
+  multiple OAuth clients at runtime.
+* **`strategy` argument for `signIn`** — new `YandexLoginStrategy` enum:
+  `auto` (default; installed Yandex apps first, then browser fallback) or
+  `webOnly` (skip the apps and go straight to the browser flow —
+  `CHROME_TAB → WEBVIEW` on Android, `ASWebAuthenticationSession` on iOS).
+  Closes the "authorizationStrategy not exposed" limitation. A `nativeOnly`
+  value is deliberately absent: neither native SDK can require the app-only
+  flow — both fall back to web when no Yandex app is installed.
+* **Native logs flow into `onLog`** — while a `YandexLoginSdk.onLog` handler
+  is installed, the Kotlin/Swift plugin layers mirror their diagnostics
+  (launch, success, cancellation, failures) into the same hook, prefixed with
+  `[native]`. On Android this also enables the `authsdk`'s own logcat output.
+  No handler — no traffic, exactly as before.
+* **`YandexAuthInProgressException`** — calling `signIn` while another
+  sign-in is running now throws a typed exception (code `BUSY`) instead of a
+  generic `YandexAuthException`.
+* **`YandexLoginResult.issuedAt` / `expiresAt`** — the plugin stamps the
+  moment the native response arrives and derives the absolute expiry
+  (`issuedAt + expiresIn`); both are `null` on iOS, which reports no TTL.
+* **`timeout` parameter for `getUserInfo` / `getJwt`** — bounds the whole
+  HTTP request; on expiry throws `YandexAuthException` with code `TIMEOUT`.
+* **Rotation no longer kills an in-flight sign-in (Android)** — on a
+  configuration change the plugin now keeps the pending Dart result and
+  re-registers its `ActivityResultLauncher`, so the auth result started before
+  the rotation is delivered instead of erroring with `DETACHED`.
+* **Locale-safe cancellation detection (iOS)** — user cancellation is now
+  recognized by error domain + code (`ASWebAuthenticationSessionError`,
+  `SFAuthenticationError`, `NSUserCancelledError`) and by the SDK's own
+  web-view-closed error, instead of matching the word "cancel" inside
+  `localizedDescription` (which the system localizes — cancels on non-English
+  devices used to surface as `SDK_ERROR`).
+* **Privacy manifest actually ships (iOS)** — `PrivacyInfo.xcprivacy` was in
+  the repo but referenced by neither CocoaPods nor SwiftPM; it is now bundled
+  via `s.resource_bundles` and SwiftPM `resources`.
+* **Re-activation on clientId change (iOS)** — calling `signIn` with a
+  different `clientId` re-activates the native SDK instead of silently reusing
+  the first one.
+* Removed the deprecated `package` attribute from the plugin's
+  `AndroidManifest.xml` (breaks builds with newer AGP).
+* Replaced the stale template Kotlin unit test with real dispatch tests; CI
+  now also runs them and validates packaging with `flutter pub publish
+  --dry-run`.
+* 95 Dart tests, coverage stays at 100%.
+
 ## 0.2.0
 
 * **User profile fetch (pure Dart)** — new `YandexLoginSdk.getUserInfo(token:)`
