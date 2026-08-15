@@ -69,6 +69,21 @@ jobs:
         working-directory: example/android
         run: ./gradlew yandex_login_sdk:testDebugUnitTest
 
+  build-web:
+    name: Build example (Web)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Build example web
+        working-directory: example
+        run: flutter build web --release
+
   build-ios:
     name: Build example (iOS)
     runs-on: macos-latest

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Yandex auth callback</title>
+</head>
+<body>
+<script>
+  // Relays the OAuth callback parameters to the app window that opened this
+  // popup (yandex_login_sdk web flow) and closes itself.
+  (function () {
+    if (window.opener) {
+      window.opener.postMessage(
+        'yandex_login_sdk:' + window.location.search + window.location.hash,
+        window.location.origin
+      );
+    }
+    window.close();
+  })();
+</script>
+</body>
+</html>
