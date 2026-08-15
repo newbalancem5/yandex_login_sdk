@@ -1,3 +1,14 @@
+## 1.0.1
+
+* **Flutter 3.47 compatibility** — the example's Android toolchain is aligned
+  with the current Flutter template: Kotlin Gradle plugin **2.4.0** is now
+  pinned explicitly in `settings.gradle.kts` (Flutter 3.47 requires
+  KGP ≥ 2.2.20 and no longer wires a usable fallback), AGP **9.1.0**,
+  Gradle **9.3.1**. `analysis_options.yaml` picked up the new
+  build/platform-directory excludes that `flutter pub get` migrates in
+  automatically.
+* No changes to the plugin code or the Dart API.
+
 ## 1.0.0
 
 * **Web support** 🎉 — `signIn` now works on Flutter Web via OAuth 2.0
