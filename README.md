@@ -21,7 +21,7 @@ web it runs the OAuth 2.0 **Authorization Code + PKCE** flow in a popup.
 - ✅ `signOut()` to clear local sign-in state
 - ✅ **100% Dart test coverage**, every commit verified by CI
 
-> **Status:** v1.0.0. Android tested in production; iOS code complete but not
+> **Status:** v1.0.1. Android tested in production; iOS code complete but not
 > yet field-tested by the maintainer (no Apple Developer account at the time
 > of release). Reports/PRs welcome.
 
