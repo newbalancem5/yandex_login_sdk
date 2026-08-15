@@ -1,8 +1,8 @@
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android Gradle Plugin.
-    // Kotlin is now wired in by Built-in Kotlin (Flutter 3.44+) — no
-    // `kotlin-android` plugin needed.
+    // Kotlin is wired in by the Flutter Gradle plugin from the version pinned
+    // in settings.gradle.kts (Flutter 3.47 requires KGP >= 2.2.20).
     id("dev.flutter.flutter-gradle-plugin")
 }
 
