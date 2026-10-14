@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'yandex_login_sdk'
-  s.version          = '1.0.1'
+  s.version          = '1.0.2'
   s.summary          = 'Native Yandex LoginSDK wrapper for Flutter — SSO via installed Yandex apps with browser fallback'
   s.description      = <<-DESC
 A thin Flutter wrapper around the official Yandex LoginSDK for iOS and Android.
@@ -18,7 +18,7 @@ and falls back to ASWebAuthenticationSession (iOS 13+) or SFSafariViewController
   s.source_files     = 'yandex_login_sdk/Sources/yandex_login_sdk/**/*.swift'
   s.resource_bundles = { 'yandex_login_sdk_privacy' => ['yandex_login_sdk/Sources/yandex_login_sdk/PrivacyInfo.xcprivacy'] }
   s.dependency 'Flutter'
-  s.dependency 'YandexLoginSDK', '~> 3.1'
+  s.dependency 'YandexLoginSDK', '~> 3.1.0'
   s.platform = :ios, '13.0'
 
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }

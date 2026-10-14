@@ -1,5 +1,5 @@
 group = "io.github.newbalancem5.yandex_login_sdk"
-version = "1.0.1"
+version = "1.0.2"
 
 allprojects {
     repositories {
@@ -73,7 +73,7 @@ android {
 
 dependencies {
     implementation("androidx.fragment:fragment:1.8.5")
-    implementation("com.yandex.android:authsdk:3.2.1")
+    implementation("com.yandex.android:authsdk:3.3.0")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("org.mockito:mockito-core:5.0.0")
