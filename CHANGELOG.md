@@ -1,3 +1,22 @@
+## 1.0.2
+
+* **Android: `authsdk` 3.2.1 → 3.3.0** ([#9](https://github.com/newbalancem5/yandex_login_sdk/issues/9))
+  — the `resolutionStrategy.force("com.yandex.android:authsdk:3.3.0")`
+  workaround is no longer needed. The new SDK also handles SSL errors in the
+  WebView fallback: they now end the sign-in with `SDK_ERROR` (details
+  `security.error`). Drop-in update, no setup changes.
+* **iOS (CocoaPods): `YandexLoginSDK` capped at `~> 3.1.0`** — YandexLoginSDK
+  3.2.0 compiles its vendored Certificate Transparency code with `-Werror`
+  and fails on deprecated `SecTrust*` APIs under the iOS 13+ deployment
+  targets Flutter apps use, so fresh `pod install`s of 1.0.1 picked up a
+  version that does not build. Swift Package Manager builds are unaffected
+  and keep resolving 3.2.0.
+* Example: committed Flutter 3.47's iOS migration (deployment target 15.0)
+  and replaced the stale template XCTest with real dispatch tests for the
+  Swift plugin layer (verified against YandexLoginSDK 3.1.1 via CocoaPods and
+  3.2.0 via SwiftPM).
+* No changes to the Dart API.
+
 ## 1.0.1
 
 * **Flutter 3.47 compatibility** — the example's Android toolchain is aligned
